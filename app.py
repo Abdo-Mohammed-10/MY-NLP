@@ -5,6 +5,19 @@ import os
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
+import os
+import numpy as np
+import pandas as pd
+
+BASE_DIR = os.path.dirname(__file__)  # المسار اللي فيه app.py
+
+CSV_PATH = os.path.join(BASE_DIR, "unique_questions.csv")
+EMB_PATH = os.path.join(BASE_DIR, "embeddings.npy")
+
+df = pd.read_csv(CSV_PATH).head(500)
+embeddings = np.load(EMB_PATH)[:500]
+
+
 st.title("🔎 Semantic Search Engine (Fast Deploy)")
 
 # =========================
@@ -43,3 +56,4 @@ if query:
     st.write("### Results:")
     for i in top_idx:
         st.write(f"{df.iloc[i]['text']} (score={sims[i]:.4f})")
+
