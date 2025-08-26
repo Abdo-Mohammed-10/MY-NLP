@@ -1,37 +1,45 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import os
 from sentence_transformers import SentenceTransformer
-import chromadb
+from sklearn.metrics.pairwise import cosine_similarity
 
-st.title("🔎 Semantic Search Engine")
+st.title("🔎 Semantic Search Engine (Fast Deploy)")
 
-# Load precomputed data
-embeddings = np.load("embeddings.npy")
-df = pd.read_csv("unique_questions.csv")
+# =========================
+# Paths
+# =========================
+BASE_DIR = os.path.dirname(__file__)
+CSV_PATH = os.path.join(BASE_DIR, "unique_questions.csv")
+EMB_PATH = os.path.join(BASE_DIR, "embeddings.npy")
 
-# ChromaDB setup
-client = chromadb.Client()
-collection = client.get_or_create_collection("questions_streamlit")
+# =========================
+# Lazy load model & data
+# =========================
+@st.cache_resource
+def load_model():
+    return SentenceTransformer("all-MiniLM-L6-v2")
 
-# add data only if collection is empty
-if collection.count() == 0:
-    collection.add(
-        ids = df["doc_id"].tolist(),
-        documents = df["text"].tolist(),
-        metadatas = df[["qid"]].to_dict(orient="records"),
-        embeddings = embeddings.tolist()
-    )
+@st.cache_data
+def load_data():
+    df = pd.read_csv(CSV_PATH).head(500)  # subset صغير للتجربة
+    embeddings = np.load(EMB_PATH)[:500]
+    return df, embeddings
 
-# Load model
-model = SentenceTransformer("all-MiniLM-L6-v2")
+model = load_model()
+df, embeddings = load_data()
 
-# Search input
+# =========================
+# User query
+# =========================
 query = st.text_input("Enter your search query:")
 
 if query:
-    q_emb = model.encode(query).tolist()
-    results = collection.query(query_embeddings=[q_emb], n_results=5)
+    q_emb = model.encode([query])
+    sims = cosine_similarity(q_emb, embeddings)[0]
+    top_idx = sims.argsort()[-5:][::-1]
+
     st.write("### Results:")
-    for i, doc in enumerate(results["documents"][0]):
-        st.write(f"{i+1}. {doc}")
+    for i in top_idx:
+        st.write(f"{df.iloc[i]['text']} (score={sims[i]:.4f})")
