@@ -1,5 +1,0 @@
-streamlit==1.30.0
-sentence-transformers==2.2.2
-chromadb==0.4.22
-numpy==1.26.0
-pandas==2.1.0
